@@ -1,0 +1,6 @@
+{
+  "name": "Household Shared Todo List",
+  "description": "An incredibly simple, satisfying, and beautiful shared todo list for households with colored categories, simple sharing, and smooth mobile-first animations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
