@@ -6,7 +6,7 @@ services:
     ports:
       - "3012:3000"
     volumes:
-      - toodoom_data:/app/data
+      - toodoomv2_data:/app/data
     environment:
       NODE_ENV: production
       DB_PATH: /app/data/households.db
