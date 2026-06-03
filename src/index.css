@@ -8,23 +8,15 @@
 
 @variant dark (&:where(.dark, .dark *));
 
-html, body {
-  height: 100%;
-  overflow: hidden; /* prevent document-level bounce scroll on iOS PWA */
-}
-
 body {
   background-color: #FAF9F6;
   color: #1F2937;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior-y: none;
 }
 
-/* #root is the only scroll container — kills ghost scroll on empty pages */
 #root {
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   padding-top: env(safe-area-inset-top, 0px);
 }
 
