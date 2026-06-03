@@ -1759,7 +1759,7 @@ export default function App() {
       <div className="max-w-4xl mx-auto">
         
         {/* Header — always single row, title truncates, icons on right */}
-        <header className="pt-8 pb-6 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8 min-w-0">
+        <header className="pt-4 pb-6 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8 min-w-0">
           <h1 className="text-lg sm:text-2xl font-black font-sans tracking-tight text-neutral-800 dark:text-neutral-100 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
             <span className="truncate">
               {currentTab === "tasks" ? household.name : currentTab === "notes" ? "Notes" : "Notepad"}
