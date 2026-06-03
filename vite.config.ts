@@ -21,7 +21,8 @@ export default defineConfig(() => {
           display: 'standalone',
           orientation: 'portrait',
           scope: '/',
-          start_url: '/',
+          start_url: '/?source=pwa',
+          handle_links: 'preferred',
           icons: [
             {
               src: '/icons/icon-192.png',

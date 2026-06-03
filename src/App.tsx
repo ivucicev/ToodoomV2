@@ -495,6 +495,13 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHouseholdSetup, setShowHouseholdSetup] = useState(false);
+  // iOS install banner: show when opened in Safari (not standalone) with a shared URL
+  const [showIosBanner, setShowIosBanner] = useState(() => {
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = (window.navigator as any).standalone === true;
+    const hasHousehold = new URLSearchParams(window.location.search).has("h");
+    return isIos && !isStandalone && hasHousehold;
+  });
   const [setupName, setSetupName] = useState("");
   const [setupOwnerName, setSetupOwnerName] = useState("");
   const [setupOwnerPin, setSetupOwnerPin] = useState("");
@@ -1755,8 +1762,22 @@ export default function App() {
 
   return (
     <div className="pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800" style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }}>
+
+      {/* iOS install banner — shown in Safari when opened via shared link */}
+      {showIosBanner && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-neutral-900 dark:bg-neutral-950 border-t border-neutral-700 px-4 py-3 flex items-center justify-between gap-3 font-sans shadow-2xl">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white">Install Toodoom</p>
+            <p className="text-[11px] text-neutral-400 mt-0.5">Tap <strong>Share →</strong> then <strong>Add to Home Screen</strong> to open this household link in the app.</p>
+          </div>
+          <button onClick={() => setShowIosBanner(false)} className="p-1.5 text-neutral-400 hover:text-white cursor-pointer shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
-        
+
         {/* Header — always single row, title truncates, icons on right */}
         <header className="pt-2 pb-5 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-6 min-w-0">
           <h1 className="text-lg sm:text-2xl font-black font-sans tracking-tight text-neutral-800 dark:text-neutral-100 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
