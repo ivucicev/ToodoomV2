@@ -135,6 +135,13 @@ async function startServer() {
   // Health check
   app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+  // Version endpoint — used by client to detect stale PWA cache
+  app.get("/api/version", (_req, res) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { version } = require("../package.json");
+    res.json({ version });
+  });
+
   // POST /api/new-household
   app.post("/api/new-household", (req, res) => {
     try {

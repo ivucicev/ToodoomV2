@@ -39,13 +39,17 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // New deploy = new SW = auto-reload via onNeedRefresh
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
           runtimeCaching: [
             {
               urlPattern: /^\/api\//,
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-cache',
-                networkTimeoutSeconds: 10,
+                networkTimeoutSeconds: 5,
               },
             },
           ],
