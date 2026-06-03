@@ -1584,7 +1584,7 @@ export default function App() {
 
   if (showHouseholdSetup) {
     return (
-      <div className={`flex flex-col items-center justify-center min-h-screen px-4 bg-[#FAF9F6] dark:bg-[#121210] ${darkMode ? "dark" : ""}`}>
+      <div style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }} className={`flex flex-col items-center justify-center px-4 bg-[#FAF9F6] dark:bg-[#121210] ${darkMode ? "dark" : ""}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1656,7 +1656,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-[#FAF9F6] dark:bg-[#121210]">
+      <div style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }} className="flex flex-col items-center justify-center px-4 bg-[#FAF9F6] dark:bg-[#121210]">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
@@ -1673,7 +1673,7 @@ export default function App() {
 
   if (isPasswordScreen) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-[#FAF9F6] dark:bg-[#121210]">
+      <div style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }} className="flex flex-col items-center justify-center px-4 bg-[#FAF9F6] dark:bg-[#121210]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1739,7 +1739,7 @@ export default function App() {
 
   if (error || !household) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 max-w-sm mx-auto text-center bg-[#FAF9F6] dark:bg-[#121210]">
+      <div style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }} className="flex flex-col items-center justify-center px-4 max-w-sm mx-auto text-center bg-[#FAF9F6] dark:bg-[#121210]">
         <div className="w-12 h-12 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-full flex items-center justify-center mb-4">
           <House className="w-6 h-6" />
         </div>
@@ -1756,7 +1756,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800">
+    <div className="pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800" style={{ minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))' }}>
       <div className="max-w-4xl mx-auto">
         
         {/* Header — always single row, title truncates, icons on right */}
