@@ -1362,23 +1362,38 @@ export default function App() {
 
 
   // Easy Cozy URL Copy Helper (Share mechanism)
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!household) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}#${household.id}`;
+
+    // Use native share sheet if available (iOS Safari, Android Chrome)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: household.name,
+          text: `Join ${household.name} on Toodoom`,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // User dismissed share sheet — no-op
+        return;
+      }
+    }
+
+    // Fallback: copy to clipboard
     const doCopy = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     };
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareUrl).then(doCopy).catch(() => {
-        // Fallback for HTTP / permission denied
         const el = document.createElement("textarea");
         el.value = shareUrl;
         el.style.position = "fixed";
         el.style.opacity = "0";
         document.body.appendChild(el);
-        el.focus();
-        el.select();
+        el.focus(); el.select();
         document.execCommand("copy");
         document.body.removeChild(el);
         doCopy();
@@ -1389,8 +1404,7 @@ export default function App() {
       el.style.position = "fixed";
       el.style.opacity = "0";
       document.body.appendChild(el);
-      el.focus();
-      el.select();
+      el.focus(); el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
       doCopy();
@@ -1956,7 +1970,7 @@ export default function App() {
                   onClick={() => setSelectedCategory("all")}
                   className={`flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer shrink-0 snap-start border ${
                     selectedCategory === "all"
-                      ? "bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 border-transparent shadow-sm"
+                      ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-transparent shadow-sm"
                       : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/60 dark:hover:bg-neutral-800"
                   }`}
                   id="tab-all-categories"
@@ -1966,8 +1980,8 @@ export default function App() {
                     <span>All Tasks</span>
                   </div>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                    selectedCategory === "all" 
-                      ? "bg-neutral-700 dark:bg-neutral-200 text-neutral-200 dark:text-neutral-800 font-bold" 
+                    selectedCategory === "all"
+                      ? "bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 font-bold"
                       : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
                   }`}>
                     {household.todos.length}
@@ -2429,7 +2443,7 @@ export default function App() {
                   onClick={() => setSelectedNoteCategory("all")}
                   className={`flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer shrink-0 snap-start border ${
                     selectedNoteCategory === "all"
-                      ? "bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 border-transparent shadow-sm"
+                      ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 border-transparent shadow-sm"
                       : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50/60 dark:hover:bg-neutral-800"
                   }`}
                   id="tab-all-notes-category"
@@ -2439,8 +2453,8 @@ export default function App() {
                     <span>All Notes</span>
                   </div>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
-                    selectedNoteCategory === "all" 
-                      ? "bg-neutral-700 dark:bg-neutral-200 text-neutral-200 dark:text-neutral-800 font-bold" 
+                    selectedNoteCategory === "all"
+                      ? "bg-neutral-300 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200 font-bold"
                       : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
                   }`}>
                     {privateNotes.length}

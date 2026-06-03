@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+households.db-shm
+.gitignore
+households.db
+households.db-wal
