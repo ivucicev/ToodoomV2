@@ -625,10 +625,8 @@ export default function App() {
   // Password protection state management
   const [passwordInput, setPasswordInput] = useState("");
   const [householdPassword, setHouseholdPassword] = useState<string>(() => {
-    const hId = window.location.hash.replace("#", "").trim();
-    if (hId) {
-      return localStorage.getItem(`breezy_password_${hId}`) || "";
-    }
+    const hId = new URLSearchParams(window.location.search).get("h") || window.location.hash.replace("#", "").trim();
+    if (hId) return localStorage.getItem(`breezy_password_${hId}`) || "";
     return "";
   });
   const [isPasswordScreen, setIsPasswordScreen] = useState(false);
@@ -651,15 +649,14 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Initialize and load household from URI hash or local storage
+  // Initialize and load household from ?h= query param, #hash fallback, or localStorage
   useEffect(() => {
-    const handleLocationChange = async () => {
-      let householdId = window.location.hash.replace("#", "").trim();
+    const init = async () => {
+      // ?h= is preferred (survives PWA install). #hash is legacy fallback.
+      const params = new URLSearchParams(window.location.search);
+      let householdId = params.get("h") || window.location.hash.replace("#", "").trim();
 
-      // Retrieve from memory if hash is empty
-      if (!householdId) {
-        householdId = localStorage.getItem("breezy_household_id") || "";
-      }
+      if (!householdId) householdId = localStorage.getItem("breezy_household_id") || "";
 
       if (householdId) {
         const savedPass = localStorage.getItem(`breezy_password_${householdId}`) || "";
@@ -668,18 +665,12 @@ export default function App() {
         setPasswordError(null);
         await loadHousehold(householdId, savedPass);
       } else {
-        // No existing household — show setup screen instead of auto-creating
         setLoading(false);
         setShowHouseholdSetup(true);
       }
     };
 
-    handleLocationChange();
-
-    window.addEventListener("hashchange", handleLocationChange);
-    return () => {
-      window.removeEventListener("hashchange", handleLocationChange);
-    };
+    init();
   }, []);
 
   // Load per-profile notes & notepad from server whenever household or active profile changes
@@ -783,7 +774,7 @@ export default function App() {
       }
 
       localStorage.setItem("breezy_household_id", data.id);
-      window.location.hash = data.id;
+      history.replaceState(null, "", `?h=${data.id}`);
       // Track visited households for switcher (max 10)
       try {
         const prev = JSON.parse(localStorage.getItem("breezy_visited_households") || "[]") as {id:string,name:string}[];
@@ -797,7 +788,7 @@ export default function App() {
       setError(err?.message || "Something went wrong loading your home.");
       // Room dead/unreachable — clear stale localStorage so user isn't stuck
       localStorage.removeItem("breezy_household_id");
-      window.location.hash = "";
+      history.replaceState(null, "", window.location.pathname);
     } finally {
       setLoading(false);
     }
@@ -822,7 +813,7 @@ export default function App() {
       const data = (await res.json()) as Household;
       setHousehold(data);
       localStorage.setItem("breezy_household_id", data.id);
-      window.location.hash = data.id;
+      history.replaceState(null, "", `?h=${data.id}`);
       // Auto-set owner as active profile — no modal needed
       if (ownerName?.trim()) {
         const trimmed = ownerName.trim();
@@ -1373,7 +1364,7 @@ export default function App() {
   // Easy Cozy URL Copy Helper (Share mechanism)
   const handleCopyLink = async () => {
     if (!household) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}#${household.id}`;
+    const shareUrl = `${window.location.origin}${window.location.pathname}?h=${household.id}`;
 
     // Use native share sheet if available (iOS Safari, Android Chrome)
     if (navigator.share) {
@@ -1697,7 +1688,7 @@ export default function App() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const hId = window.location.hash.replace("#", "").trim() || localStorage.getItem("breezy_household_id") || "";
+              const hId = new URLSearchParams(window.location.search).get("h") || localStorage.getItem("breezy_household_id") || "";
               if (hId) {
                 loadHousehold(hId, passwordInput.trim());
               }
@@ -1730,7 +1721,7 @@ export default function App() {
             <span>Want to start fresh? </span>
             <button
               onClick={() => {
-                window.location.hash = "";
+                history.replaceState(null, "", window.location.pathname);
                 localStorage.removeItem("breezy_household_id");
                 setShowHouseholdSetup(true);
               }}
@@ -1947,7 +1938,7 @@ export default function App() {
                   onSetMemberPin={handleSetMemberPin}
                   onNewHousehold={() => {
                     localStorage.removeItem("breezy_household_id");
-                    window.location.hash = "";
+                    history.replaceState(null, "", window.location.pathname);
                     setHousehold(null);
                     setShowHouseholdSetup(true);
                     setSetupName("");
@@ -1960,7 +1951,7 @@ export default function App() {
                   onCopyLink={handleCopyLink}
                   appVersion={version}
                   visitedHouseholds={(() => { try { return JSON.parse(localStorage.getItem("breezy_visited_households") || "[]"); } catch { return []; } })()}
-                  onSwitchHousehold={(id: string) => { localStorage.setItem("breezy_household_id", id); window.location.hash = id; setActiveProfile(""); }}
+                  onSwitchHousehold={(id: string) => { localStorage.setItem("breezy_household_id", id); history.replaceState(null, "", `?h=${id}`); setActiveProfile(""); window.location.reload(); }}
                   hasPassword={!!household.password}
                   onUpdatePassword={handleUpdateHouseholdPassword}
                 />
