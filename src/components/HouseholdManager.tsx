@@ -13,6 +13,7 @@ interface HouseholdManagerProps {
   onRemoveMember: (name: string) => void;
   onSetMemberPin: (member: string, pin: string) => void;
   onNewHousehold: () => void;
+  appVersion?: string;
   darkMode: boolean;
   onToggleDarkMode: () => void;
   copied: boolean;
@@ -32,6 +33,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   onRemoveMember,
   onSetMemberPin,
   onNewHousehold,
+  appVersion,
   darkMode,
   onToggleDarkMode,
   copied,
@@ -344,12 +346,17 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>Share link to invite members</span>
                 </div>
-                <button
-                  onClick={() => { setIsOpen(false); onNewHousehold(); }}
-                  className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors cursor-pointer underline underline-offset-2"
-                >
-                  + New Household
-                </button>
+                <div className="flex items-center gap-3">
+                  {appVersion && (
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-600 font-mono">v{appVersion}</span>
+                  )}
+                  <button
+                    onClick={() => { setIsOpen(false); onNewHousehold(); }}
+                    className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors cursor-pointer underline underline-offset-2"
+                  >
+                    + New Household
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>

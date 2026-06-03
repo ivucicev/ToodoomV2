@@ -42,6 +42,7 @@ import {
   Unlock
 } from "lucide-react";
 import { Household, TodoItem, Category, DEFAULT_CATEGORIES, DEFAULT_NOTE_CATEGORIES, NoteItem, NotepadTab } from "./types";
+import { version } from "../package.json";
 import { TaskItem } from "./components/TaskItem";
 import { HouseholdManager } from "./components/HouseholdManager";
 import { CategoryEditModal } from "./components/CategoryEditModal";
@@ -1939,6 +1940,7 @@ export default function App() {
                   onToggleDarkMode={() => setDarkMode(!darkMode)}
                   copied={copied}
                   onCopyLink={handleCopyLink}
+                  appVersion={version}
                   hasPassword={!!household.password}
                   onUpdatePassword={handleUpdateHouseholdPassword}
                 />
