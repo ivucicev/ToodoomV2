@@ -57,7 +57,7 @@ function getGenAI() {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is required for AI sorting.");
     tsGenAI = new GoogleGenAI({
       apiKey: key,
-      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+      httpOptions: {},
     });
   }
   return tsGenAI;

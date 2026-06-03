@@ -1,5 +1,8 @@
-# ── Stage 1: build frontend + server bundle ──────────────────────────────────
+# ── Stage 1: build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
+
+# Build tools for better-sqlite3 native addon
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
@@ -9,19 +12,15 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ── Stage 2: production runtime ───────────────────────────────────────────────
+# ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Rebuild native modules (better-sqlite3) for the target arch
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-# Copy built assets from builder
+# Copy pre-built node_modules (native addons already compiled in builder)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
-# Data directory for SQLite DB (mount a volume here)
 RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
@@ -30,7 +29,6 @@ ENV DB_PATH=/app/data/households.db
 
 EXPOSE 3000
 
-# Non-root user for security
 RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
 USER app
 
