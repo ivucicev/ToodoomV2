@@ -1754,11 +1754,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="min-h-screen pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800">
       <div className="max-w-4xl mx-auto">
         
         {/* Header — always single row, title truncates, icons on right */}
-        <header className="pb-6 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8 min-w-0" style={{ paddingTop: 'max(2rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }}>
+        <header className="pt-8 pb-6 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8 min-w-0">
           <h1 className="text-lg sm:text-2xl font-black font-sans tracking-tight text-neutral-800 dark:text-neutral-100 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
             <span className="truncate">
               {currentTab === "tasks" ? household.name : currentTab === "notes" ? "Notes" : "Notepad"}
@@ -2702,7 +2702,7 @@ export default function App() {
   </AnimatePresence>
 
         {/* Cozy Segmented Tab Bar - floating & anchored at the bottom perfectly */}
-        <div className="fixed left-1/2 -translate-x-1/2 z-45 max-w-[95%]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-45 max-w-[95%]">
           <div className="bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md p-1 rounded-full border border-neutral-200/60 dark:border-neutral-800/85 flex items-center gap-0.5 shadow-lg font-sans">
             <button
               onClick={() => setCurrentTab("tasks")}

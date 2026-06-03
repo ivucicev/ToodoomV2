@@ -13,14 +13,6 @@ body {
   color: #1F2937;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
-  /* iOS PWA safe areas for sides */
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-}
-
-/* Push all content below iOS status bar */
-#root {
-  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .dark body {
