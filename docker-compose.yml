@@ -1,9 +1,6 @@
 services:
   app:
-    image: ghcr.io/${GHCR_REPO:-toodoom/toodoom}:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/ivucicev/toodoomv2:latest
     ports:
       - "3012:3000"
     volumes:
@@ -14,10 +11,11 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
 
 volumes:
   toodoom_data:
