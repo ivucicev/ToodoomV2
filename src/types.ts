@@ -7,6 +7,8 @@ export interface TodoItem {
   updatedAt: string;
   completedAt?: string;
   assignedTo?: string; // Name of household member
+  createdBy?: string;
+  completedBy?: string;
   notes?: string;
   aiGroup?: string; // Optional AI categorised group (e.g. Produce, Dairy, Kitchen, Yard)
   tags?: string[]; // Inline parsed hashtag lists
@@ -37,14 +39,28 @@ export interface Household {
   name: string;
   members: string[];
   categories: Category[];
+  noteCategories?: Category[];
   todos: TodoItem[];
+  profileNotes?: Record<string, NoteItem[]>;
+  profileNotepads?: Record<string, NotepadTab[]>;
+  // Legacy fields kept for migration
   notes?: NoteItem[];
   notepadTabs?: NotepadTab[];
+  owner?: string;
+  memberPins?: Record<string, string>;
   updatedAt: string;
   password?: string;
 }
 
 // Default/starting template for a new household
+export const DEFAULT_NOTE_CATEGORIES: Category[] = [
+  { id: "ncat-ideas", name: "Ideas", color: "#F59E0B", icon: "Sparkles" },
+  { id: "ncat-work", name: "Work", color: "#3B82F6", icon: "Book" },
+  { id: "ncat-personal", name: "Personal", color: "#10B981", icon: "Heart" },
+  { id: "ncat-shopping", name: "Shopping", color: "#EC4899", icon: "ShoppingBag" },
+  { id: "ncat-misc", name: "Other", color: "#8B5CF6", icon: "Tag" },
+];
+
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-groceries", name: "Groceries", color: "#EC4899", icon: "ShoppingBag" }, // Pink
   { id: "cat-chores", name: "Daily Chores", color: "#3B82F6", icon: "CheckSquare" }, // Blue

@@ -41,7 +41,7 @@ import {
   Lock,
   Unlock
 } from "lucide-react";
-import { Household, TodoItem, Category, DEFAULT_CATEGORIES, NoteItem, NotepadTab } from "./types";
+import { Household, TodoItem, Category, DEFAULT_CATEGORIES, DEFAULT_NOTE_CATEGORIES, NoteItem, NotepadTab } from "./types";
 import { TaskItem } from "./components/TaskItem";
 import { HouseholdManager } from "./components/HouseholdManager";
 import { CategoryEditModal } from "./components/CategoryEditModal";
@@ -492,6 +492,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHouseholdSetup, setShowHouseholdSetup] = useState(false);
+  const [setupName, setSetupName] = useState("");
+  const [setupOwnerName, setSetupOwnerName] = useState("");
+  const [setupOwnerPin, setSetupOwnerPin] = useState("");
 
   // Filter/View states
   const [currentTab, setCurrentTab] = useState<"tasks" | "notes" | "notepad">("tasks");
@@ -502,60 +506,21 @@ export default function App() {
   const [aiSorting, setAiSorting] = useState<boolean>(false);
   const [isActionsDropdownOpen, setIsActionsDropdownOpen] = useState<boolean>(false);
 
-  // Private notes - loaded and saved privately in browser localStorage
-  const [privateNotes, setPrivateNotes] = useState<NoteItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("private_notes");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Active profile: who is using the app on this device
+  const [activeProfile, setActiveProfile] = useState<string>("");
+  const [showProfilePicker, setShowProfilePicker] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [pendingProfile, setPendingProfile] = useState<string | null>(null);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
 
-  // Save privateNotes whenever they change
-  useEffect(() => {
-    localStorage.setItem("private_notes", JSON.stringify(privateNotes));
-  }, [privateNotes]);
-
-  // Private notepad tabs state
-  const [notepadTabs, setNotepadTabs] = useState<NotepadTab[]>(() => {
-    try {
-      const saved = localStorage.getItem("private_notepads_tabs");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return [
-      { id: "tab-1", title: "general notes", content: "" }
-    ];
-  });
-
-  // Active notepad tab ID
-  const [activeNotepadTabId, setActiveNotepadTabId] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem("private_notepads_active_id");
-      return saved || "tab-1";
-    } catch {
-      return "tab-1";
-    }
-  });
-
-  // State to track if a tab is currently being renamed inline
+  // Notes and notepad are per-profile, synced to server so they work across devices
+  const [privateNotes, setPrivateNotes] = useState<NoteItem[]>([]);
+  const [notepadTabs, setNotepadTabs] = useState<NotepadTab[]>([
+    { id: "tab-1", title: "general notes", content: "" }
+  ]);
+  const [activeNotepadTabId, setActiveNotepadTabId] = useState<string>("tab-1");
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
-
-  // Sync state whenever notepadTabs or activeTabId changes
-  useEffect(() => {
-    localStorage.setItem("private_notepads_tabs", JSON.stringify(notepadTabs));
-  }, [notepadTabs]);
-
-  useEffect(() => {
-    localStorage.setItem("private_notepads_active_id", activeNotepadTabId);
-  }, [activeNotepadTabId]);
 
   // Find the active notepad tab
   const activeTab = useMemo(() => {
@@ -565,6 +530,7 @@ export default function App() {
   // Local scratchpad/notepad state for fluid real-time writing experience without typing lag
   const [notepadContent, setNotepadContent] = useState<string>(() => activeTab.content);
   const isEditingNotepadRef = useRef<boolean>(false);
+  const justCreatedRef = useRef<boolean>(false);
   const debouncedSaveRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync notepadContent when activeTab changes
@@ -651,6 +617,7 @@ export default function App() {
   // Sharing feedback states
   const [copied, setCopied] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingNoteCategory, setEditingNoteCategory] = useState<Category | null>(null);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Password protection state management
@@ -699,7 +666,9 @@ export default function App() {
         setPasswordError(null);
         await loadHousehold(householdId, savedPass);
       } else {
-        await createNewHousehold();
+        // No existing household — show setup screen instead of auto-creating
+        setLoading(false);
+        setShowHouseholdSetup(true);
       }
     };
 
@@ -711,36 +680,33 @@ export default function App() {
     };
   }, []);
 
-  // Synergize and sync server-side notes & notepad tabs when switching households
+  // Load per-profile notes & notepad from server whenever household or active profile changes
   useEffect(() => {
-    if (household) {
-      if (household.notes) {
-        setPrivateNotes(household.notes);
-        localStorage.setItem("private_notes", JSON.stringify(household.notes));
-      } else {
-        if (privateNotes.length > 0) {
-          syncWithServer({
-            ...household,
-            notes: privateNotes,
-            updatedAt: new Date().toISOString()
-          });
-        }
-      }
+    if (!household) return;
+    const profile = activeProfile || "shared";
+    const notes = household.profileNotes?.[profile] ?? household.notes ?? [];
+    const defaultTabs = [{ id: "tab-1", title: "general notes", content: "" }];
+    const tabs = household.profileNotepads?.[profile] ?? household.notepadTabs ?? defaultTabs;
+    setPrivateNotes(notes);
+    if (!isEditingNotepadRef.current) {
+      const validTabs = tabs.length > 0 ? tabs : defaultTabs;
+      setNotepadTabs(validTabs);
+      setActiveNotepadTabId(prev => validTabs.find(t => t.id === prev) ? prev : validTabs[0].id);
+    }
+  }, [household?.id, activeProfile]);
 
-      if (household.notepadTabs && household.notepadTabs.length > 0) {
-        if (!isEditingNotepadRef.current) {
-          setNotepadTabs(household.notepadTabs);
-        }
-        localStorage.setItem("private_notepads_tabs", JSON.stringify(household.notepadTabs));
-      } else {
-        if (notepadTabs.length > 0) {
-          syncWithServer({
-            ...household,
-            notepadTabs: notepadTabs,
-            updatedAt: new Date().toISOString()
-          });
-        }
+  // Load or prompt for active profile when household changes
+  useEffect(() => {
+    if (household?.id) {
+      const saved = localStorage.getItem(`breezy_profile_${household.id}`);
+      if (saved) {
+        setActiveProfile(saved);
+        setProfileModalOpen(false);
+      } else if (household.members.length > 0 || household.owner) {
+        // Household is claimed — must pick a profile from the list
+        setProfileModalOpen(true);
       }
+      // else: brand new unclaimed household, let in freely
     }
   }, [household?.id]);
 
@@ -767,12 +733,6 @@ export default function App() {
           // Only update local state if remote was updated more recently
           if (remoteData.updatedAt !== household.updatedAt) {
             setHousehold(remoteData);
-            if (remoteData.notes) {
-              setPrivateNotes(remoteData.notes);
-            }
-            if (remoteData.notepadTabs && remoteData.notepadTabs.length > 0 && !isEditingNotepadRef.current) {
-              setNotepadTabs(remoteData.notepadTabs);
-            }
           }
         }
       } catch (err) {
@@ -815,13 +775,6 @@ export default function App() {
       const data = (await res.json()) as Household;
       setHousehold(data);
 
-      if (data.notes) {
-        setPrivateNotes(data.notes);
-      }
-      if (data.notepadTabs && data.notepadTabs.length > 0) {
-        setNotepadTabs(data.notepadTabs);
-      }
-
       if (passToTry) {
         localStorage.setItem(`breezy_password_${id}`, passToTry);
         setHouseholdPassword(passToTry);
@@ -829,37 +782,44 @@ export default function App() {
 
       localStorage.setItem("breezy_household_id", data.id);
       window.location.hash = data.id;
+
+      justCreatedRef.current = false;
     } catch (err: any) {
       setError(err?.message || "Something went wrong loading your home.");
+      // Room dead/unreachable — clear stale localStorage so user isn't stuck
+      localStorage.removeItem("breezy_household_id");
+      window.location.hash = "";
     } finally {
       setLoading(false);
     }
   };
 
-  // Network Create Action: Create Cozy Household ID
-  const createNewHousehold = async () => {
+  // Network Create Action: Create household with a given name
+  const createNewHousehold = async (name?: string, ownerName?: string, ownerPin?: string) => {
+    justCreatedRef.current = true;
     setLoading(true);
     setError(null);
+    setShowHouseholdSetup(false);
     setIsPasswordScreen(false);
     setPasswordError(null);
     setHouseholdPassword("");
     try {
-      const res = await fetch("/api/new-household", { method: "POST" });
-      if (!res.ok) {
-        throw new Error("Failed to configure new home");
-      }
+      const res = await fetch("/api/new-household", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name?.trim() || "", ownerName: ownerName?.trim() || "", ownerPin: ownerPin?.trim() || "" }),
+      });
+      if (!res.ok) throw new Error("Failed to configure new home");
       const data = (await res.json()) as Household;
       setHousehold(data);
-
-      if (data.notes) {
-        setPrivateNotes(data.notes);
-      }
-      if (data.notepadTabs && data.notepadTabs.length > 0) {
-        setNotepadTabs(data.notepadTabs);
-      }
-
       localStorage.setItem("breezy_household_id", data.id);
       window.location.hash = data.id;
+      // Auto-set owner as active profile — no modal needed
+      if (ownerName?.trim()) {
+        const trimmed = ownerName.trim();
+        setActiveProfile(trimmed);
+        localStorage.setItem(`breezy_profile_${data.id}`, trimmed);
+      }
     } catch (err: any) {
       setError(err?.message || "Failed to initialize new household.");
     } finally {
@@ -897,7 +857,10 @@ export default function App() {
 
       if (res.ok) {
         const freshData = (await res.json()) as Household;
-        setHousehold(freshData);
+        // Only sync the server-authoritative updatedAt — full state is already correct
+        // from the optimistic update. Replacing the whole household here causes a
+        // second full re-render that looks like a page flash to the user.
+        setHousehold(prev => prev ? { ...prev, updatedAt: freshData.updatedAt } : freshData);
       }
     } catch (err) {
       console.error("Local save failed to sync immediately, retrying shortly", err);
@@ -958,7 +921,8 @@ export default function App() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: tags,
-      notes: newNotes.trim() ? newNotes.trim() : undefined
+      notes: newNotes.trim() ? newNotes.trim() : undefined,
+      createdBy: activeProfile || undefined,
     };
 
     const nextState: Household = {
@@ -978,6 +942,8 @@ export default function App() {
     // Reset typing entry input
     setNewTask("");
     setNewNotes("");
+    setShowSuggestions(false);
+    setCursorIndex(0);
   };
 
   // Toggle incomplete status with satisfying transition state
@@ -991,6 +957,7 @@ export default function App() {
           ...t,
           completed: isCompleted,
           completedAt: isCompleted ? new Date().toISOString() : undefined,
+          completedBy: isCompleted ? (activeProfile || undefined) : undefined,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -1138,63 +1105,44 @@ export default function App() {
     const nextTabs = [...notepadTabs, newTab];
     setNotepadTabs(nextTabs);
     setActiveNotepadTabId(newTab.id);
-    setEditingTabId(newTab.id); // Triggers inline editor immediately
+    setEditingTabId(newTab.id);
+    syncProfileNotepads(nextTabs);
+  };
 
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notepadTabs: nextTabs,
-        updatedAt: new Date().toISOString()
-      });
-    }
+  const syncProfileNotepads = (nextTabs: NotepadTab[]) => {
+    if (!household) return;
+    const profile = activeProfile || "shared";
+    syncLocalAndRemote({
+      ...household,
+      profileNotepads: { ...(household.profileNotepads || {}), [profile]: nextTabs },
+      updatedAt: new Date().toISOString()
+    });
   };
 
   const handleDeleteNotepadTab = (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (notepadTabs.length <= 1) {
-      return;
-    }
+    if (notepadTabs.length <= 1) return;
     if (confirm("Delete this notepad tab? All its content will be permanently lost.")) {
       const nextTabs = notepadTabs.filter((t) => t.id !== tabId);
       setNotepadTabs(nextTabs);
-      
-      let nextActiveId = activeNotepadTabId;
       if (activeNotepadTabId === tabId) {
-        nextActiveId = nextTabs[0].id;
-        setActiveNotepadTabId(nextActiveId);
+        setActiveNotepadTabId(nextTabs[0].id);
       }
-
-      if (household) {
-        syncLocalAndRemote({
-          ...household,
-          notepadTabs: nextTabs,
-          updatedAt: new Date().toISOString()
-        });
-      }
+      syncProfileNotepads(nextTabs);
     }
   };
 
-  const handleRenameNotepadTab = (tabId: string, currentTitle: string) => {
+  const handleRenameNotepadTab = (tabId: string, _currentTitle: string) => {
     setEditingTabId(tabId);
   };
 
   const handleFinishRenameTab = (tabId: string, nextTitle: string) => {
     const trimmedTitle = nextTitle.trim();
-    if (!trimmedTitle) {
-      setEditingTabId(null);
-      return;
-    }
+    if (!trimmedTitle) { setEditingTabId(null); return; }
     const nextTabs = notepadTabs.map((t) => (t.id === tabId ? { ...t, title: trimmedTitle } : t));
     setNotepadTabs(nextTabs);
     setEditingTabId(null);
-
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notepadTabs: nextTabs,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    syncProfileNotepads(nextTabs);
   };
 
   const handleNotepadChange = (newVal: string) => {
@@ -1202,33 +1150,14 @@ export default function App() {
     const nextTabs = notepadTabs.map((t) => (t.id === activeNotepadTabId ? { ...t, content: newVal } : t));
     setNotepadTabs(nextTabs);
 
-    // Debounce pushing notepad content to the server (1.5 seconds)
-    if (debouncedSaveRef.current) {
-      clearTimeout(debouncedSaveRef.current);
-    }
-    debouncedSaveRef.current = setTimeout(() => {
-      if (household) {
-        syncWithServer({
-          ...household,
-          notepadTabs: nextTabs,
-          updatedAt: new Date().toISOString()
-        });
-      }
-    }, 1500);
+    if (debouncedSaveRef.current) clearTimeout(debouncedSaveRef.current);
+    debouncedSaveRef.current = setTimeout(() => syncProfileNotepads(nextTabs), 1500);
   };
 
   const handleNotepadBlur = () => {
     isEditingNotepadRef.current = false;
-    if (debouncedSaveRef.current) {
-      clearTimeout(debouncedSaveRef.current);
-    }
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notepadTabs: notepadTabs,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    if (debouncedSaveRef.current) clearTimeout(debouncedSaveRef.current);
+    syncProfileNotepads(notepadTabs);
   };
 
 // Private notes operations (persisting in browser local storage & synced to cloud server)
@@ -1237,10 +1166,10 @@ export default function App() {
 
     let processedText = text.trim();
     if (selectedNoteCategory !== "all" && household) {
-      const activeCat = household.categories.find((c) => c.id === selectedNoteCategory);
+      const noteCats = household.noteCategories || DEFAULT_NOTE_CATEGORIES;
+      const activeCat = noteCats.find((c) => c.id === selectedNoteCategory);
       if (activeCat) {
-        // If the note content doesn't already contain any category hashtag (@CategoryName)
-        const alreadyHasCat = getNoteCategory(processedText, household.categories);
+        const alreadyHasCat = getNoteCategory(processedText, noteCats);
         if (!alreadyHasCat) {
           processedText = `${processedText}\n\n@${activeCat.name}`;
         }
@@ -1255,65 +1184,41 @@ export default function App() {
     };
     const nextNotes = [newNote, ...privateNotes];
     setPrivateNotes(nextNotes);
+    syncProfileNotes(nextNotes);
+  };
 
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notes: nextNotes,
-        updatedAt: new Date().toISOString()
-      });
-    }
+  const syncProfileNotes = (nextNotes: NoteItem[]) => {
+    if (!household) return;
+    const profile = activeProfile || "shared";
+    syncLocalAndRemote({
+      ...household,
+      profileNotes: { ...(household.profileNotes || {}), [profile]: nextNotes },
+      updatedAt: new Date().toISOString()
+    });
   };
 
   const handleUpdateNote = (noteId: string, newText: string) => {
-    const nextNotes = privateNotes.map((n) => {
-      if (n.id === noteId) {
-        return {
-          ...n,
-          text: newText,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return n;
-    });
+    const nextNotes = privateNotes.map((n) =>
+      n.id === noteId ? { ...n, text: newText, updatedAt: new Date().toISOString() } : n
+    );
     setPrivateNotes(nextNotes);
-
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notes: nextNotes,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    syncProfileNotes(nextNotes);
   };
 
   const handleDeleteNote = (noteId: string) => {
     const nextNotes = privateNotes.filter((n) => n.id !== noteId);
     setPrivateNotes(nextNotes);
-
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notes: nextNotes,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    syncProfileNotes(nextNotes);
   };
 
   const handleDeleteNotesByCategory = (catName: string) => {
+    const noteCats = household?.noteCategories || DEFAULT_NOTE_CATEGORIES;
     const nextNotes = privateNotes.filter((n) => {
-      const cat = getNoteCategory(n.text, household?.categories || []);
+      const cat = getNoteCategory(n.text, noteCats);
       return cat?.name.toLowerCase() !== catName.toLowerCase();
     });
     setPrivateNotes(nextNotes);
-
-    if (household) {
-      syncLocalAndRemote({
-        ...household,
-        notes: nextNotes,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    syncProfileNotes(nextNotes);
   };
 
   // Helper to parse potential category from notes
@@ -1347,12 +1252,12 @@ export default function App() {
   const filteredNotes = useMemo(() => {
     const allNotes = privateNotes;
     if (selectedNoteCategory === "all") return allNotes;
-    
+    const noteCats = household?.noteCategories || DEFAULT_NOTE_CATEGORIES;
     return allNotes.filter((note) => {
-      const matchingCat = getNoteCategory(note.text, household?.categories || []);
+      const matchingCat = getNoteCategory(note.text, noteCats);
       return matchingCat?.id === selectedNoteCategory;
     });
-  }, [privateNotes, selectedNoteCategory, household?.categories]);
+  }, [privateNotes, selectedNoteCategory, household?.noteCategories]);
 
   // Handle: Update individual category (such as icon and color)
   const handleUpdateCategory = (updatedCat: Category) => {
@@ -1367,6 +1272,22 @@ export default function App() {
       categories: nextCategories,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  const handleSetMemberPin = (member: string, pin: string) => {
+    if (!household || activeProfile !== household.owner) return;
+    syncLocalAndRemote({
+      ...household,
+      memberPins: { ...(household.memberPins || {}), [member]: pin },
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleUpdateNoteCategory = (updatedCat: Category) => {
+    if (!household) return;
+    const current = household.noteCategories || DEFAULT_NOTE_CATEGORIES;
+    const next = current.map((c) => c.id === updatedCat.id ? updatedCat : c);
+    syncLocalAndRemote({ ...household, noteCategories: next, updatedAt: new Date().toISOString() });
   };
 
   // Household Custom Settings Callbacks
@@ -1403,22 +1324,25 @@ export default function App() {
     });
   };
 
-  const handleAddMember = (memberName: string) => {
-    if (!household) return;
+  const handleAddMember = (memberName: string, pin?: string) => {
+    if (!household || activeProfile !== household.owner) return;
     const cleanName = memberName.trim();
-    if (household.members.includes(cleanName)) return;
+    if (!cleanName || household.members.includes(cleanName)) return;
+
+    const nextPins = pin?.trim()
+      ? { ...(household.memberPins || {}), [cleanName]: pin.trim() }
+      : household.memberPins;
 
     syncLocalAndRemote({
       ...household,
       members: [...household.members, cleanName],
+      ...(nextPins ? { memberPins: nextPins } : {}),
       updatedAt: new Date().toISOString(),
     });
   };
 
   const handleRemoveMember = (memberName: string) => {
-    if (!household) return;
-    // Keep 'Everyone' protected
-    if (memberName === "Everyone") return;
+    if (!household || activeProfile !== household.owner) return;
 
     const nextTodos = household.todos.map((t) => {
       if (t.assignedTo === memberName) {
@@ -1441,10 +1365,49 @@ export default function App() {
   const handleCopyLink = () => {
     if (!household) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}#${household.id}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
+    const doCopy = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(doCopy).catch(() => {
+        // Fallback for HTTP / permission denied
+        const el = document.createElement("textarea");
+        el.value = shareUrl;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        doCopy();
+      });
+    } else {
+      const el = document.createElement("textarea");
+      el.value = shareUrl;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      doCopy();
+    }
+  };
+
+  const handleSelectProfile = (name: string) => {
+    setActiveProfile(name);
+    if (household?.id) {
+      localStorage.setItem(`breezy_profile_${household.id}`, name);
+      // First profile to claim this household becomes the owner
+      if (!household.owner) {
+        syncLocalAndRemote({ ...household, owner: name, updatedAt: new Date().toISOString() });
+      }
+    }
+    setProfileModalOpen(false);
+    setShowProfilePicker(false);
   };
 
   // Create filters
@@ -1603,6 +1566,78 @@ export default function App() {
     ? household.todos.filter((t) => !t.completed).length
     : 0;
 
+  if (showHouseholdSetup) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen px-4 bg-[#FAF9F6] dark:bg-[#121210] ${darkMode ? "dark" : ""}`}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm"
+        >
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-neutral-200/50 dark:border-neutral-700/50">
+              <House className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+            </div>
+            <h1 className="text-2xl font-black text-neutral-800 dark:text-neutral-100 mb-2 font-sans">Name your space</h1>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              Give your household a name — it'll be part of your unique link.
+            </p>
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = setupName.trim();
+              const ownerName = setupOwnerName.trim();
+              const ownerPin = setupOwnerPin.trim();
+              if (!name || !ownerName || !ownerPin) return;
+              createNewHousehold(name, ownerName, ownerPin);
+            }}
+            className="space-y-3"
+          >
+            <input
+              type="text"
+              placeholder="e.g. Smith Family, Our Apartment..."
+              value={setupName}
+              onChange={(e) => setSetupName(e.target.value)}
+              autoFocus
+              maxLength={40}
+              className="w-full text-sm font-sans bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-3 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 placeholder-neutral-400 dark:placeholder-neutral-600"
+            />
+            {setupName.trim() && (
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 px-1 font-mono">
+                URL: {setupName.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().replace(/\s+/g, "-").substring(0, 28)}-XXXX
+              </p>
+            )}
+            <input
+              type="text"
+              placeholder="Your name (e.g. Ivan, Mom, Alex...)"
+              value={setupOwnerName}
+              onChange={(e) => setSetupOwnerName(e.target.value)}
+              maxLength={20}
+              className="w-full text-sm font-sans bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-3 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 placeholder-neutral-400 dark:placeholder-neutral-600"
+            />
+            <input
+              type="password"
+              placeholder="Your PIN (to sign in securely)"
+              value={setupOwnerPin}
+              onChange={(e) => setSetupOwnerPin(e.target.value)}
+              maxLength={20}
+              className="w-full text-sm font-sans bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 py-3 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 placeholder-neutral-400 dark:placeholder-neutral-600"
+            />
+            <button
+              type="submit"
+              disabled={!setupName.trim() || !setupOwnerName.trim() || !setupOwnerPin.trim()}
+              className="w-full py-3 bg-neutral-800 dark:bg-neutral-100 hover:bg-neutral-900 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-bold rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Create Household
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen px-4 bg-[#FAF9F6] dark:bg-[#121210]">
@@ -1673,7 +1708,8 @@ export default function App() {
             <button
               onClick={() => {
                 window.location.hash = "";
-                createNewHousehold();
+                localStorage.removeItem("breezy_household_id");
+                setShowHouseholdSetup(true);
               }}
               className="font-bold underline text-neutral-650 dark:text-neutral-450 hover:text-neutral-850 dark:hover:text-neutral-200 cursor-pointer"
             >
@@ -1694,7 +1730,7 @@ export default function App() {
         <h3 className="text-base font-bold text-neutral-800 dark:text-neutral-100 mb-1">Room offline</h3>
         <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-6">{error || "Household connection issue"}</p>
         <button
-          onClick={createNewHousehold}
+          onClick={() => { localStorage.removeItem("breezy_household_id"); setShowHouseholdSetup(true); }}
           className="px-4 py-2 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-semibold rounded-xl hover:bg-neutral-900 dark:hover:bg-neutral-200 cursor-pointer"
         >
           Create New Cozy Household
@@ -1707,26 +1743,26 @@ export default function App() {
     <div className="min-h-screen pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800">
       <div className="max-w-4xl mx-auto">
         
-        {/* Sticky/Polished Header Area */}
-        <header className="pt-8 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8">
-          <div>
-            <h1 className="text-2xl font-black font-sans tracking-tight text-neutral-800 dark:text-neutral-100 flex items-center gap-2.5">
-              {currentTab === "tasks" ? household.name : currentTab === "notes" ? "Household Notes" : "Notepad"}
-              {currentTab === "tasks" && syncing && (
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-              )}
-              {currentTab === "tasks" && incompleteCount > 0 && (
-                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold leading-none bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/20 dark:border-neutral-700/30">
-                  {incompleteCount} left
-                </span>
-              )}
-            </h1>
-          </div>
+        {/* Header — always single row, title truncates, icons on right */}
+        <header className="pt-8 pb-6 flex items-center gap-3 border-b border-neutral-200/50 dark:border-neutral-800/60 mb-8 min-w-0">
+          <h1 className="text-lg sm:text-2xl font-black font-sans tracking-tight text-neutral-800 dark:text-neutral-100 flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+            <span className="truncate">
+              {currentTab === "tasks" ? household.name : currentTab === "notes" ? "Notes" : "Notepad"}
+            </span>
+            {currentTab === "tasks" && syncing && (
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
+            {currentTab === "tasks" && incompleteCount > 0 && (
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold leading-none bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/20 dark:border-neutral-700/30 shrink-0">
+                {incompleteCount}
+              </span>
+            )}
+          </h1>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {currentTab === "tasks" && (
               <>
                 {/* Elegant Dropdown for List Actions */}
@@ -1755,7 +1791,8 @@ export default function App() {
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95, y: 8 }}
                           transition={{ type: "spring", stiffness: 450, damping: 25 }}
-                          className="absolute right-0 mt-2 w-52 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl shadow-xl z-40 p-1.5 overflow-hidden font-sans"
+                          style={{ width: "min(208px, calc(100vw - 1rem))" }}
+                          className="absolute right-0 top-full mt-2 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl shadow-xl z-40 p-1.5 font-sans"
                         >
                           {/* AI Organize Button/Menu Item */}
                           <button
@@ -1812,48 +1849,82 @@ export default function App() {
               </>
             )}
 
-            {/* Theme Toggle Button */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="flex items-center justify-center p-2 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-350 transition-all cursor-pointer"
-              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              aria-label="Toggle dark mode"
-              id="theme-toggle-btn"
-            >
-              {darkMode ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-neutral-500" />
-              )}
-            </button>
+            {/* Active Profile Chip — only owner can switch */}
+            <div className="relative">
+              <button
+                onClick={() => activeProfile === household.owner && setShowProfilePicker(!showProfilePicker)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-neutral-200 bg-white dark:bg-neutral-900 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-all shadow-sm max-w-[130px] ${
+                  activeProfile === household.owner ? "hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer" : "cursor-default opacity-80"
+                }`}
+                title={activeProfile === household.owner ? "Switch profile" : activeProfile || "No profile"}
+              >
+                <User className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate hidden sm:inline">{activeProfile || "Set profile"}</span>
+              </button>
+
+              <AnimatePresence>
+                {showProfilePicker && household && (
+                  <>
+                    <div className="fixed inset-0 z-35" onClick={() => setShowProfilePicker(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ type: "spring", stiffness: 450, damping: 25 }}
+                      style={{ width: "min(192px, calc(100vw - 1rem))" }}
+                      className="absolute right-0 top-full mt-2 max-h-[60vh] overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl shadow-xl z-40 p-2 font-sans"
+                    >
+                      <div className="px-2 py-1 text-[10px] uppercase font-bold text-neutral-400 dark:text-neutral-500 tracking-wider mb-1">
+                        Switch profile
+                      </div>
+                      {/* Dedupe: include owner even if not in members array */}
+                      {Array.from(new Set([...(household.owner ? [household.owner] : []), ...household.members])).map((member) => (
+                        <button
+                          key={member}
+                          onClick={() => handleSelectProfile(member)}
+                          className={`flex items-center gap-2 w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            activeProfile === member
+                              ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                          }`}
+                        >
+                          <User className="w-3 h-3 shrink-0" />
+                          <span className="flex-1 truncate">{member}</span>
+                          {activeProfile === member && <Check className="w-3 h-3 text-emerald-500 shrink-0" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
 
             {currentTab === "tasks" && (
               <>
-                {/* Share action button (Icon Only) */}
-                <button
-                  onClick={handleCopyLink}
-                  className={`flex items-center justify-center p-2 rounded-full border transition-all cursor-pointer ${
-                    copied
-                      ? "bg-emerald-100/60 dark:bg-emerald-950/45 text-emerald-700 dark:text-emerald-400 border-emerald-250 dark:border-emerald-850"
-                      : "border-neutral-200 bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-350"
-                  }`}
-                  title={copied ? "Invite Link Copied!" : "Share House List"}
-                  id="copy-household-link"
-                >
-                  {copied ? (
-                    <ClipboardCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-jump" />
-                  ) : (
-                    <Share2 className="w-4 h-4" />
-                  )}
-                </button>
-
                 {/* Custom Household Configurations Dialog (Icon Only Managed Internally) */}
                 <HouseholdManager
                   householdName={household.name}
                   members={household.members}
+                  owner={household.owner || ""}
+                  isOwner={activeProfile === household.owner && !!household.owner}
+                  memberPins={household.memberPins || {}}
                   onUpdateName={handleUpdateHouseholdName}
                   onAddMember={handleAddMember}
                   onRemoveMember={handleRemoveMember}
+                  onSetMemberPin={handleSetMemberPin}
+                  onNewHousehold={() => {
+                    localStorage.removeItem("breezy_household_id");
+                    window.location.hash = "";
+                    setHousehold(null);
+                    setShowHouseholdSetup(true);
+                    setSetupName("");
+                    setSetupOwnerName("");
+                    setSetupOwnerPin("");
+                  }}
+                  darkMode={darkMode}
+                  onToggleDarkMode={() => setDarkMode(!darkMode)}
+                  copied={copied}
+                  onCopyLink={handleCopyLink}
                   hasPassword={!!household.password}
                   onUpdatePassword={handleUpdateHouseholdPassword}
                 />
@@ -2376,11 +2447,11 @@ export default function App() {
                   </span>
                 </button>
 
-                {/* Real categories from household categories mapped */}
-                {household.categories.map((cat) => {
+                {/* Note-specific categories */}
+                {(household.noteCategories || DEFAULT_NOTE_CATEGORIES).map((cat) => {
                   const IconComp = ICON_MAP[cat.icon || "Tag"] || Tag;
                   const catCount = privateNotes.filter((note) => {
-                    const matchingCat = getNoteCategory(note.text, household.categories);
+                    const matchingCat = getNoteCategory(note.text, household.noteCategories || DEFAULT_NOTE_CATEGORIES);
                     return matchingCat?.id === cat.id;
                   }).length;
                   const isSelected = selectedNoteCategory === cat.id;
@@ -2401,7 +2472,16 @@ export default function App() {
                       id={`note-category-${cat.id}`}
                     >
                       <div className="flex items-center gap-2">
-                        <IconComp className="w-3.5 h-3.5 shrink-0" style={{ color: cat.color }} />
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingNoteCategory(cat);
+                          }}
+                          className="p-1 rounded-md hover:bg-neutral-100/80 dark:hover:bg-neutral-800 -ml-1.5 transition-all cursor-pointer group/icon flex items-center justify-center"
+                          title="Click to change category icon & color"
+                        >
+                          <IconComp className="w-3.5 h-3.5 shrink-0 transition-transform group-hover/icon:scale-120" style={{ color: cat.color }} />
+                        </span>
                         <span className="truncate max-w-[100px]">{cat.name}</span>
                       </div>
                       <span className="text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 px-1.5 py-0.5 rounded-md">
@@ -2455,7 +2535,7 @@ export default function App() {
                   <NoteCard
                     key={note.id}
                     note={note}
-                    categories={household.categories}
+                    categories={household.noteCategories || DEFAULT_NOTE_CATEGORIES}
                     darkMode={darkMode}
                     onUpdate={handleUpdateNote}
                     onDelete={handleDeleteNote}
@@ -2478,7 +2558,7 @@ export default function App() {
                   No notes in this category
                 </p>
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs mx-auto font-sans">
-                  Write down lists or ideas and mention @{selectedNoteCategory !== "all" ? household.categories.find(c => c.id === selectedNoteCategory)?.name : "Category"} to organize.
+                  Write down lists or ideas and mention @{selectedNoteCategory !== "all" ? (household.noteCategories || DEFAULT_NOTE_CATEGORIES).find(c => c.id === selectedNoteCategory)?.name : "Category"} to organize.
                 </p>
               </motion.div>
             )}
@@ -2581,23 +2661,6 @@ export default function App() {
         {/* Notepad Editor View */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/80 rounded-2xl p-6 md:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col min-h-[460px] relative">
           {/* Floating Header details */}
-          <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800/40 mb-6 font-sans">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center border border-neutral-100 dark:border-neutral-800">
-                <Notebook className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Shared Household Notepad</h3>
-                <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Collaborative notepad tabs synchronized in real-time</p>
-              </div>
-            </div>
-            
-            {/* Cloud Sync indicator */}
-            <div className="flex items-center gap-2 text-xs text-neutral-550 dark:text-neutral-400 font-semibold font-sans">
-              <span className={`w-1.5 h-1.5 rounded-full ${syncing ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-              <span>{syncing ? "Syncing..." : "Synced with household server"}</span>
-            </div>
-          </div>
 
           {/* Writing canvas */}
           <div className="flex-1 flex flex-col">
@@ -2680,7 +2743,7 @@ export default function App() {
 
       </div>
 
-      {/* Category Customizer Modal */}
+      {/* Task Category Customizer Modal */}
       <AnimatePresence>
         {editingCategory && (
           <CategoryEditModal
@@ -2688,6 +2751,111 @@ export default function App() {
             onClose={() => setEditingCategory(null)}
             onSave={handleUpdateCategory}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Note Category Customizer Modal */}
+      <AnimatePresence>
+        {editingNoteCategory && (
+          <CategoryEditModal
+            category={editingNoteCategory}
+            onClose={() => setEditingNoteCategory(null)}
+            onSave={handleUpdateNoteCategory}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Profile Picker Modal — shown on first visit to a household */}
+      <AnimatePresence>
+        {profileModalOpen && household && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-4 pb-8 sm:pb-0">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              className="w-full max-w-xs bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl p-6 shadow-2xl font-sans"
+            >
+              <div className="text-center mb-5">
+                <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <User className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                </div>
+                <h3 className="text-base font-black text-neutral-800 dark:text-neutral-100 mb-1">Who are you?</h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                  {household.members.length > 0
+                    ? "Pick your profile to continue."
+                    : `Ask ${household.owner || "the owner"} to add you via Settings.`}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {Array.from(new Set([...(household.owner ? [household.owner] : []), ...household.members])).map((member) => {
+                  const hasPin = !!(household.memberPins?.[member]);
+                  const isPending = pendingProfile === member;
+                  return (
+                    <div key={member}>
+                      <button
+                        onClick={() => {
+                          if (hasPin) {
+                            setPendingProfile(isPending ? null : member);
+                            setPinInput("");
+                            setPinError(false);
+                          } else {
+                            handleSelectProfile(member);
+                          }
+                        }}
+                        className={`flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer border active:scale-[0.98] ${
+                          isPending
+                            ? "bg-neutral-100 dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100"
+                            : "bg-neutral-50 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 border-neutral-100 dark:border-neutral-700/50 text-neutral-700 dark:text-neutral-200"
+                        }`}
+                      >
+                        <User className="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                        <span className="flex-1 text-left">{member}</span>
+                        {hasPin && <Lock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />}
+                      </button>
+
+                      {isPending && hasPin && (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (pinInput === household.memberPins?.[member]) {
+                              handleSelectProfile(member);
+                              setPendingProfile(null);
+                              setPinInput("");
+                              setPinError(false);
+                            } else {
+                              setPinError(true);
+                            }
+                          }}
+                          className="flex gap-2 mt-1.5"
+                        >
+                          <input
+                            type="password"
+                            placeholder="Enter PIN..."
+                            value={pinInput}
+                            onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
+                            autoFocus
+                            className={`flex-1 text-sm bg-neutral-50 dark:bg-neutral-900 border rounded-xl px-3 py-2 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 ${
+                              pinError
+                                ? "border-red-400 focus:ring-red-400"
+                                : "border-neutral-200 dark:border-neutral-700 focus:ring-neutral-400 dark:focus:ring-neutral-600"
+                            }`}
+                          />
+                          <button type="submit" className="px-3.5 py-2 bg-neutral-800 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-bold rounded-xl cursor-pointer">
+                            <Check className="w-4 h-4" />
+                          </button>
+                        </form>
+                      )}
+                      {isPending && pinError && (
+                        <p className="text-[11px] text-red-500 mt-1 px-1">Wrong PIN</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

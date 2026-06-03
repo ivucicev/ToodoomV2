@@ -81,6 +81,7 @@ export const CategoryEditModal: React.FC<CategoryEditModalProps> = ({
       color: selectedColor,
       icon: selectedIcon,
     });
+    onClose();
   };
 
   return (

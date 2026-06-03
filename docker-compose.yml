@@ -1,0 +1,24 @@
+services:
+  app:
+    image: ghcr.io/${GHCR_REPO:-toodoom/toodoom}:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - toodoom_data:/app/data
+    environment:
+      NODE_ENV: production
+      DB_PATH: /app/data/households.db
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  toodoom_data:
+    driver: local

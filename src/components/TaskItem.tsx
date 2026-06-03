@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trash2, Check, Edit2, X } from "lucide-react";
+import { Trash2, Check, Edit2, X, User } from "lucide-react";
 import { TodoItem, Category } from "../types";
 
 interface TaskItemProps {
@@ -61,14 +61,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   return (
     <motion.div
-      layoutId={`todo-card-${todo.id}`}
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 350, damping: 25 }}
-      className={`group relative flex ${isEditing || todo.notes ? "items-start" : "items-center"} justify-between gap-3 px-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md dark:hover:shadow-neutral-950/40 transition-all focus-within:border-neutral-300 dark:focus-within:border-neutral-700/85 focus-within:shadow-md ${
-        todo.completed 
-          ? "bg-neutral-50/20 dark:bg-neutral-950/10 border-neutral-100/30 dark:border-neutral-900/20 opacity-30 blur-[1px] grayscale select-none scale-[0.995]" 
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: todo.completed ? 0.32 : 1, y: 0 }}
+      exit={{ opacity: 0, y: -4, transition: { duration: 0.12, ease: "easeIn" } }}
+      transition={{ duration: 0.16, ease: "easeOut" }}
+      className={`group relative flex ${isEditing || todo.notes ? "items-start" : "items-center"} justify-between gap-3 px-4 py-3.5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-md dark:hover:shadow-neutral-950/40 transition-[box-shadow,border-color] focus-within:border-neutral-300 dark:focus-within:border-neutral-700/85 focus-within:shadow-md ${
+        todo.completed
+          ? "bg-neutral-50/20 dark:bg-neutral-950/10 border-neutral-100/30 dark:border-neutral-900/20 blur-[0.5px] grayscale select-none"
           : ""
       }`}
     >
@@ -170,6 +169,20 @@ export const TaskItem: React.FC<TaskItemProps> = ({
               {todo.notes && (
                 <span className="block text-xs text-neutral-500 dark:text-neutral-400 font-sans mt-1 whitespace-pre-wrap">
                   {todo.notes}
+                </span>
+              )}
+
+              {/* Attribution: who created or completed */}
+              {!todo.completed && todo.createdBy && (
+                <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-neutral-350 dark:text-neutral-600 font-sans">
+                  <User className="w-2.5 h-2.5" />
+                  {todo.createdBy}
+                </span>
+              )}
+              {todo.completed && todo.completedBy && (
+                <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-neutral-350 dark:text-neutral-600 font-sans">
+                  <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                  {todo.completedBy}
                 </span>
               )}
             </div>
