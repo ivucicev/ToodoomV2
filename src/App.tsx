@@ -459,7 +459,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, categories, darkMode, onUpdat
           )}
 
           {/* Hover control bar containing actions */}
-          <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <div className="absolute top-4 right-4 flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -784,6 +784,13 @@ export default function App() {
 
       localStorage.setItem("breezy_household_id", data.id);
       window.location.hash = data.id;
+      // Track visited households for switcher (max 10)
+      try {
+        const prev = JSON.parse(localStorage.getItem("breezy_visited_households") || "[]") as {id:string,name:string}[];
+        const filtered = prev.filter(h => h.id !== data.id);
+        filtered.unshift({ id: data.id, name: data.name });
+        localStorage.setItem("breezy_visited_households", JSON.stringify(filtered.slice(0, 10)));
+      } catch {}
 
       justCreatedRef.current = false;
     } catch (err: any) {
@@ -1952,6 +1959,8 @@ export default function App() {
                   copied={copied}
                   onCopyLink={handleCopyLink}
                   appVersion={version}
+                  visitedHouseholds={(() => { try { return JSON.parse(localStorage.getItem("breezy_visited_households") || "[]"); } catch { return []; } })()}
+                  onSwitchHousehold={(id: string) => { localStorage.setItem("breezy_household_id", id); window.location.hash = id; setActiveProfile(""); }}
                   hasPassword={!!household.password}
                   onUpdatePassword={handleUpdateHouseholdPassword}
                 />
@@ -2662,7 +2671,7 @@ export default function App() {
                         e.stopPropagation();
                         setEditingTabId(tab.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-opacity rounded cursor-pointer"
+                      className="sm:opacity-0 sm:group-hover:opacity-100 p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-opacity rounded cursor-pointer"
                       title="Rename tab"
                     >
                       <Edit2 className="w-2.5 h-2.5" />

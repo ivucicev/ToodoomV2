@@ -13,7 +13,7 @@ function readAppVersion(): string {
 const APP_VERSION = readAppVersion();
 import Database from "better-sqlite3";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type } from "@google/genai";
+import OpenAI from "openai";
 import { DEFAULT_CATEGORIES, DEFAULT_NOTE_CATEGORIES, Household } from "./src/types";
 
 // ─── SQLite setup ────────────────────────────────────────────────────────────
@@ -61,38 +61,18 @@ function idExists(id: string): boolean {
 
 // ─── AI setup ────────────────────────────────────────────────────────────────
 
-let tsGenAI: GoogleGenAI | null = null;
-function getGenAI() {
-  if (!tsGenAI) {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("GEMINI_API_KEY environment variable is required for AI sorting.");
-    tsGenAI = new GoogleGenAI({
-      apiKey: key,
-      httpOptions: {},
-    });
-  }
-  return tsGenAI;
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY environment variable is required for AI sorting.");
+  return new OpenAI({ apiKey: key });
 }
 
-const systemInstruction =
-  "You are an AI sequence optimizer for household todo and shopping lists.\n" +
-  "Your absolute goal is to reorder a batch of simple tasks or shopping list items into logical clusters or aisles.\n" +
-  "For shopping and grocery lists (e.g. food items, milk, fruit, eggs, bread, shampoo):\n" +
-  "Sort items strictly in the physical layout sequence of a standard supermarket:\n" +
-  "1. Fruit & Produce (e.g., apples, bananas, salad, lemon, berries)\n" +
-  "2. Bakery (e.g., bread, rolls, bagels, croissants, cookies)\n" +
-  "3. Meat & Deli/Seafood (e.g., salami, turkey chest, bacon, beef, sausage, fish)\n" +
-  "4. Dairy, Eggs & Cheese (e.g., eggs, milk, cheese, butter, yogurt, cream)\n" +
-  "5. Pantry & Dry Goods (e.g., flour, sugar, baking soda, pasta, rice, olive oil)\n" +
-  "6. Canned & Jarred Foods (e.g. tomato sauce, canned beans, soup)\n" +
-  "7. Frozen Foods (e.g., frozen fruits, pizzas, frozen veggies)\n" +
-  "8. Snacks & Beverages (e.g., potato chips, chocolates, soda, beer, coffee, tea)\n" +
-  "9. Household, Soap & Personal Care (e.g., toilet paper, hand wash, shampoo, cleaner, garbage bag)\n" +
-  "10. Pets & Botanical (e.g., dog biscuits, cat food, plant flowers).\n\n" +
-  "For chore lists (e.g. clean living room, wash toilet, cut grass, water patio, wash plates):\n" +
-  "Categorize and order tasks logically by room or area from inside to outside.\n\n" +
-  "For any other miscellaneous or general list, group by logical common category and priority.\n" +
-  "Always output a 'groupName' for each item.";
+const AI_SYSTEM_PROMPT =
+  "You are an AI sequence optimizer for household todo and shopping lists. " +
+  "Reorder items into logical clusters. For grocery lists sort by supermarket aisle order. " +
+  "For chore lists sort by room (inside to outside). " +
+  "Return ONLY valid JSON matching the schema: {\"sortedItems\":[{\"id\":\"...\",\"text\":\"...\",\"groupName\":\"...\"}]}. " +
+  "groupName is a short human-friendly label like 'Fruit & Produce', 'Dairy', 'Kitchen', 'Living Room', etc.";
 
 // ─── ID helpers ──────────────────────────────────────────────────────────────
 
@@ -273,39 +253,22 @@ async function startServer() {
       if (items.length === 0) return res.json({ sortedItems: [] });
 
       const itemsToPrompt = items.map((it: any) => ({ id: it.id, text: it.text }));
-      const ai = getGenAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `Category: "${categoryName || "Everything Else"}"\nItems:\n${JSON.stringify(itemsToPrompt)}`,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              sortedItems: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    id:        { type: Type.STRING },
-                    text:      { type: Type.STRING },
-                    groupName: { type: Type.STRING },
-                  },
-                  required: ["id", "text", "groupName"],
-                },
-              },
-            },
-            required: ["sortedItems"],
-          },
-        },
+      const openai = getOpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: AI_SYSTEM_PROMPT },
+          { role: "user", content: `Category: "${categoryName || "Everything Else"}"\nItems: ${JSON.stringify(itemsToPrompt)}` },
+        ],
       });
 
-      return res.json(JSON.parse((response.text || "{}").trim()));
+      const text = completion.choices[0]?.message?.content || "{}";
+      return res.json(JSON.parse(text.trim()));
     } catch (err: any) {
       console.error("AI Sort error:", err);
-      if (err.message?.includes("GEMINI_API_KEY")) {
-        return res.status(403).json({ error: "API Key Required" });
+      if (err.message?.includes("OPENAI_API_KEY")) {
+        return res.status(403).json({ error: "OPENAI_API_KEY not configured" });
       }
       return res.status(500).json({ error: "AI sorting unavailable" });
     }

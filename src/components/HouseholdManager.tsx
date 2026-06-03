@@ -13,6 +13,8 @@ interface HouseholdManagerProps {
   onRemoveMember: (name: string) => void;
   onSetMemberPin: (member: string, pin: string) => void;
   onNewHousehold: () => void;
+  visitedHouseholds?: { id: string; name: string }[];
+  onSwitchHousehold?: (id: string) => void;
   appVersion?: string;
   darkMode: boolean;
   onToggleDarkMode: () => void;
@@ -33,6 +35,8 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   onRemoveMember,
   onSetMemberPin,
   onNewHousehold,
+  visitedHouseholds = [],
+  onSwitchHousehold,
   appVersion,
   darkMode,
   onToggleDarkMode,
@@ -318,6 +322,30 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Household switcher */}
+              {visitedHouseholds.length > 1 && (
+                <div className="mt-4 pt-3 border-t border-neutral-50 dark:border-neutral-800/60">
+                  <label className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5">
+                    Switch Household
+                  </label>
+                  <div className="flex flex-col gap-1">
+                    {visitedHouseholds.map((h) => (
+                      <button
+                        key={h.id}
+                        onClick={() => { setIsOpen(false); onSwitchHousehold?.(h.id); }}
+                        className={`text-left text-xs px-2.5 py-2 rounded-lg transition-colors cursor-pointer font-medium truncate ${
+                          h.id === householdName.toLowerCase().replace(/\s+/g,'-') || visitedHouseholds[0]?.id === h.id
+                            ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                            : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                        }`}
+                      >
+                        {h.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Share + Dark Mode row */}
               <div className="mt-4 pt-3 border-t border-neutral-50 dark:border-neutral-800/60 flex items-center gap-2">
