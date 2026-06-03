@@ -2696,14 +2696,12 @@ export default function App() {
           })}
         </div>
 
-        {/* Notepad Editor View */}
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/80 rounded-2xl p-6 md:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col min-h-[460px] relative">
-          {/* Floating Header details */}
-
+        {/* Notepad Editor View — fills available viewport height */}
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/80 rounded-2xl p-6 md:p-8 shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex flex-col relative" style={{ minHeight: 'calc(100dvh - 260px)' }}>
           {/* Writing canvas */}
           <div className="flex-1 flex flex-col">
             <textarea
-              placeholder="Type anything here... This writing pad is synchronized with your household code so all members can see!"
+              placeholder="Start writing..."
               value={notepadContent}
               onChange={(e) => {
                 isEditingNotepadRef.current = true;
@@ -2711,7 +2709,6 @@ export default function App() {
               }}
               onBlur={handleNotepadBlur}
               className="w-full flex-1 bg-transparent resize-none border-none outline-none text-sm md:text-base leading-relaxed text-neutral-800 dark:text-neutral-100 placeholder-neutral-350 dark:placeholder-neutral-700 focus:ring-0 p-0 font-sans"
-              style={{ minHeight: "350px" }}
             />
           </div>
 
