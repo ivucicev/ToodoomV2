@@ -45,17 +45,6 @@ import { Household, TodoItem, Category, DEFAULT_CATEGORIES, DEFAULT_NOTE_CATEGOR
 import { version } from "../package.json";
 import { TaskItem } from "./components/TaskItem";
 
-// Hard reload if server has a newer version — busts stale PWA cache
-const doReload = () => { (window as Window).location.reload(); };
-fetch("/api/version").then(r => r.json()).then((data: { version: string }) => {
-  if (data.version && data.version !== version) {
-    if ('caches' in window) {
-      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(doReload);
-    } else {
-      doReload();
-    }
-  }
-}).catch(() => {});
 import { HouseholdManager } from "./components/HouseholdManager";
 import { CategoryEditModal } from "./components/CategoryEditModal";
 
