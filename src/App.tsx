@@ -2004,7 +2004,7 @@ export default function App() {
                 {/* Real lists mapped */}
                 {household.categories.map((cat) => {
                   const IconComp = ICON_MAP[cat.icon || "Tag"] || Tag;
-                  const catCount = household.todos.filter((t) => t.categoryId === cat.id).length;
+                  const catCount = household.todos.filter((t) => t.categoryId === cat.id && !t.completed).length;
                   const isSelected = selectedCategory === cat.id;
 
                   return (
@@ -2537,7 +2537,7 @@ export default function App() {
                     placeholder="Type a household note... Auto-saves on blur or Ctrl+Enter. Use @Category (like @Groceries) to categorize, #tags to label."
                     className="w-full flex-1 bg-transparent resize-none border-none outline-none text-sm leading-relaxed text-[#1a1a1a] dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:ring-0 p-0 font-sans"
                     id="new-note-textarea"
-                    categories={household.categories}
+                    categories={household.noteCategories || DEFAULT_NOTE_CATEGORIES}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                         e.preventDefault();
