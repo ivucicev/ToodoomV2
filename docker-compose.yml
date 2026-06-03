@@ -1,6 +1,7 @@
 services:
   app:
     image: ghcr.io/ivucicev/toodoomv2:latest
+    pull_policy: always
     ports:
       - "3012:3000"
     volumes:
