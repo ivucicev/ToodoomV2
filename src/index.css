@@ -15,6 +15,13 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* iOS PWA: push content below status bar.
+   Hardcoded 50px covers all iPhones if env() fails. */
+#root {
+  padding-top: 50px;
+  padding-top: env(safe-area-inset-top, 50px);
+}
+
 .dark body {
   background-color: #121210;
   color: #F5F5F4;
