@@ -14,10 +14,13 @@ body {
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
   overscroll-behavior-y: none;
+  /* dvh fills exact visible viewport on iOS Safari, not the full 100vh with hidden chrome */
+  min-height: 100dvh;
 }
 
 #root {
   padding-top: env(safe-area-inset-top, 0px);
+  min-height: 100dvh;
 }
 
 .dark body {
