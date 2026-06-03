@@ -1754,7 +1754,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen pb-32 px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800">
+    <div className="min-h-screen px-4 sm:px-6 bg-[#FAF9F6] dark:bg-[#121210] text-[#1a1a1a] dark:text-neutral-100 transition-colors duration-300 selection:bg-neutral-200 dark:selection:bg-neutral-800" style={{ paddingBottom: 'calc(8rem + env(safe-area-inset-bottom, 0px))' }}>
       <div className="max-w-4xl mx-auto">
         
         {/* Header — always single row, title truncates, icons on right */}
@@ -2702,7 +2702,7 @@ export default function App() {
   </AnimatePresence>
 
         {/* Cozy Segmented Tab Bar - floating & anchored at the bottom perfectly */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-45 max-w-[95%]">
+        <div className="fixed left-1/2 -translate-x-1/2 z-45 max-w-[95%]" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md p-1 rounded-full border border-neutral-200/60 dark:border-neutral-800/85 flex items-center gap-0.5 shadow-lg font-sans">
             <button
               onClick={() => setCurrentTab("tasks")}
