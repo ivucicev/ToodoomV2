@@ -1778,6 +1778,16 @@ export default function App() {
           </h1>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Refresh button */}
+            <button
+              onClick={() => household?.id && loadHousehold(household.id, householdPassword || undefined)}
+              disabled={syncing}
+              className="flex items-center justify-center w-9 h-9 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-350 transition-all cursor-pointer shadow-sm disabled:opacity-40"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+            </button>
+
             {currentTab === "tasks" && (
               <>
                 {/* Elegant Dropdown for List Actions */}
