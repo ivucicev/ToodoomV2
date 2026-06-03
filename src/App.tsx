@@ -505,6 +505,7 @@ export default function App() {
   const [setupName, setSetupName] = useState("");
   const [setupOwnerName, setSetupOwnerName] = useState("");
   const [setupOwnerPin, setSetupOwnerPin] = useState("");
+  const [joinCode, setJoinCode] = useState("");
 
   // Filter/View states
   const [currentTab, setCurrentTab] = useState<"tasks" | "notes" | "notepad">("tasks");
@@ -1654,6 +1655,46 @@ export default function App() {
               Create Household
             </button>
           </form>
+
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800">
+            <p className="text-xs text-center text-neutral-500 dark:text-neutral-400 mb-3 font-sans">Already have a household?</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const val = joinCode.trim();
+                if (!val) return;
+                // Accept full URL or bare code
+                let code = val;
+                try {
+                  const u = new URL(val);
+                  code = u.searchParams.get("h") || u.hash.replace("#", "") || val;
+                } catch {}
+                code = code.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+                if (code) {
+                  localStorage.setItem("breezy_household_id", code);
+                  history.replaceState(null, "", `?h=${code}`);
+                  setShowHouseholdSetup(false);
+                  loadHousehold(code);
+                }
+              }}
+              className="flex gap-2"
+            >
+              <input
+                type="text"
+                placeholder="Paste invite link or household code"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                className="flex-1 text-sm font-sans bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-600 placeholder-neutral-400 dark:placeholder-neutral-600"
+              />
+              <button
+                type="submit"
+                disabled={!joinCode.trim()}
+                className="px-4 py-2.5 bg-neutral-800 dark:bg-neutral-100 hover:bg-neutral-900 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-bold rounded-xl cursor-pointer disabled:opacity-40"
+              >
+                Join
+              </button>
+            </form>
+          </div>
         </motion.div>
       </div>
     );
