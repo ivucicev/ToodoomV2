@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import { existsSync } from "fs";
 import Database from "better-sqlite3";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -304,8 +305,17 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const indexPath = path.join(distPath, "index.html");
+    console.log(`[static] distPath=${distPath} exists=${existsSync(distPath)} index=${existsSync(indexPath)}`);
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+    app.get("*", (_req, res) => {
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error("[sendFile] error:", err.message);
+          res.status(500).send(`Cannot serve app: ${err.message}`);
+        }
+      });
+    });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
