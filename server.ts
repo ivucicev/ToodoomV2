@@ -1,6 +1,16 @@
 import express from "express";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
+
+function readAppVersion(): string {
+  try {
+    const pkgPath = path.join(process.cwd(), "package.json");
+    return JSON.parse(readFileSync(pkgPath, "utf-8")).version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+const APP_VERSION = readAppVersion();
 import Database from "better-sqlite3";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -137,9 +147,7 @@ async function startServer() {
 
   // Version endpoint — used by client to detect stale PWA cache
   app.get("/api/version", (_req, res) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { version } = require("../package.json");
-    res.json({ version });
+    res.json({ version: APP_VERSION });
   });
 
   // POST /api/new-household

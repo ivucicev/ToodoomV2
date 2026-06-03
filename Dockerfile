@@ -20,6 +20,7 @@ WORKDIR /app
 # Copy pre-built node_modules (native addons already compiled in builder)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
 
 RUN mkdir -p /app/data
 
