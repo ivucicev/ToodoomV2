@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Users, X, Plus, Edit2, Check, Settings, Sparkles, Lock, Unlock, Crown, Sun, Moon, Share2, ClipboardCheck } from "lucide-react";
+import { Users, X, Plus, Edit2, Check, Settings, Sparkles, Lock, Unlock, Crown, Sun, Moon, Share2, ClipboardCheck, Copy } from "lucide-react";
 
 interface HouseholdManagerProps {
+  householdId: string;
   householdName: string;
   members: string[];
   owner: string;
@@ -25,6 +26,7 @@ interface HouseholdManagerProps {
 }
 
 export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
+  householdId,
   householdName,
   members,
   owner,
@@ -53,6 +55,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   const [editingPinFor, setEditingPinFor] = useState<string | null>(null);
   const [editingPinValue, setEditingPinValue] = useState("");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -76,6 +79,42 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
       setNewMemberName("");
       setNewMemberPin("");
     }
+  };
+
+  const handleCopyCode = () => {
+    const doCopy = () => {
+      setCopiedCode(true);
+      window.setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    doCopy();
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(householdId).catch(() => {
+        const el = document.createElement("textarea");
+        el.value = householdId;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        doCopy();
+      });
+      return;
+    }
+
+    const el = document.createElement("textarea");
+    el.value = householdId;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+    doCopy();
   };
 
   return (
@@ -165,6 +204,33 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
                     </button>
                   </div>
                 )}
+              </div>
+
+              {/* Household Code */}
+              <div className="mb-4">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5">
+                  Household Code
+                </label>
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-3">
+                  <div className="flex items-center gap-2">
+                    <code className="min-w-0 flex-1 break-all font-mono text-base font-bold tracking-wide text-neutral-900 dark:text-neutral-100">
+                      {householdId}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all cursor-pointer ${
+                        copiedCode
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                      }`}
+                      title="Copy household code"
+                    >
+                      {copiedCode ? <ClipboardCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedCode ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Members Manager */}

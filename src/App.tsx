@@ -1989,6 +1989,7 @@ export default function App() {
               <>
                 {/* Custom Household Configurations Dialog (Icon Only Managed Internally) */}
                 <HouseholdManager
+                  householdId={household.id}
                   householdName={household.name}
                   members={household.members}
                   owner={household.owner || ""}
