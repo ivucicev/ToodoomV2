@@ -1373,13 +1373,14 @@ export default function App() {
   const handleCopyLink = async () => {
     if (!household) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}?h=${household.id}`;
+    const shareText = `Join ${household.name} on Toodoom\n\nOr join by code: ${household.id}`;
 
     // Use native share sheet if available (iOS Safari, Android Chrome)
     if (navigator.share) {
       try {
         await navigator.share({
           title: household.name,
-          text: `Join ${household.name} on Toodoom`,
+          text: shareText,
           url: shareUrl,
         });
         return;
