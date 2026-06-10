@@ -13,9 +13,24 @@ Toodoom began as a weekend idea after noticing that every simple tasks app had t
 - 🐳 **Self-host friendly** – Docker Compose setup included so you can launch the full stack in one command.
 - 🗄️ **SQLite** – lightweight, zero-config persistence with WAL mode for safe concurrent writes.
 
+## Screenshots
+
+### Desktop
+
+| Tasks | Notes | Notepad |
+| ----- | ----- | ------- |
+| ![Desktop tasks view](screenshots/desktop-tasks.png) | ![Desktop notes view](screenshots/desktop-notes.png) | ![Desktop notepad view](screenshots/desktop-notepad.png) |
+
+### Mobile
+
+| Tasks | Notes | Notepad |
+| ----- | ----- | ------- |
+| ![Mobile tasks view](screenshots/mobile-tasks.png) | ![Mobile notes view](screenshots/mobile-notes.png) | ![Mobile notepad view](screenshots/mobile-notepad.png) |
+
 ## Table of contents
 
 - [Highlights](#highlights)
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
   - [Prerequisites](#prerequisites)
@@ -26,7 +41,6 @@ Toodoom began as a weekend idea after noticing that every simple tasks app had t
 - [Self hosting](#self-hosting)
   - [Docker Compose](#docker-compose)
 - [Available scripts](#available-scripts)
-- [Project status & roadmap](#project-status--roadmap)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -39,7 +53,7 @@ Toodoom is a React 19 application backed by an Express + SQLite server.
 │   React frontend   │◄────►│  Express API + SQLite    │
 │  • Tasks & notes   │ http │  • Households & members  │
 │  • PWA shell       │      │  • PIN auth              │
-│  • Optimistic UI   │      │  • Gemini AI sorting     │
+│  • Optimistic UI   │      │  • OpenAI sorting        │
 └────────────────────┘      └──────────────────────────┘
 ```
 
@@ -68,11 +82,11 @@ npm run dev
 
 Visit `http://localhost:3000`.
 
-Optional — Gemini AI list sorting:
+Optional — OpenAI list sorting:
 
 ```bash
 cp .env.example .env.local
-# set GEMINI_API_KEY=your_key
+# set OPENAI_API_KEY=your_key
 ```
 
 ## Configuration
@@ -81,7 +95,7 @@ cp .env.example .env.local
 | -------- | ------- | ------- |
 | `PORT` | `3000` | HTTP port |
 | `DB_PATH` | `./households.db` | SQLite database path |
-| `GEMINI_API_KEY` | — | Enables AI list sorting |
+| `OPENAI_API_KEY` | — | Enables AI list sorting |
 
 ## Progressive Web App
 
@@ -100,8 +114,8 @@ Drop your icons into `public/icons/` — see `index.html` for the full list of r
 # Pull image and start
 docker compose up -d
 
-# With Gemini key
-GEMINI_API_KEY=your_key docker compose up -d
+# With OpenAI key
+OPENAI_API_KEY=your_key docker compose up -d
 ```
 
 Image: `ghcr.io/ivucicev/toodoomv2:latest`
@@ -116,20 +130,6 @@ SQLite database persists in Docker named volume `toodoom_data`. Stop and restart
 | `npm run build` | Build frontend + server bundle into `dist/`. |
 | `npm start` | Run the production build. |
 | `npm run lint` | TypeScript type check. |
-
-## Project status & roadmap
-
-- [x] Tasks with categories, tags, AI sorting
-- [x] Per-profile notes and notepad tabs
-- [x] Household sharing with PIN-protected member profiles
-- [x] Owner controls — only owner manages members
-- [x] Dark/light theme toggle
-- [x] PWA install support (iPhone + Android)
-- [x] Docker + GHCR deployment
-- [x] SQLite persistence
-- [ ] Push notifications for task assignments
-- [ ] Due dates and reminders
-- [ ] Recurring tasks
 
 ## Contributing
 
