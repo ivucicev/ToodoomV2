@@ -1,5 +1,10 @@
+// PushNest service worker — copy this to your web app's public root.
+
 self.addEventListener('push', event => {
-  const payload = event.data ? event.data.json() : {};
+  let payload = {};
+  if (event.data) {
+    try { payload = event.data.json(); } catch { payload = { title: event.data.text() }; }
+  }
   const n = payload.notification || payload;
 
   const options = {
@@ -27,6 +32,7 @@ self.addEventListener('notificationclick', event => {
   const { url, notificationId, subscriptionId, trackClickUrl } = event.notification.data || {};
   const target = url || '/';
 
+  // Track click (fire and forget)
   if (notificationId && trackClickUrl) {
     fetch(trackClickUrl, {
       method: 'POST',
