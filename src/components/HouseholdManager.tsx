@@ -56,6 +56,70 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   const [editingPinValue, setEditingPinValue] = useState("");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string>("");
+  const [sendStatus, setSendStatus] = useState<string>("");
+  const [schedStatus, setSchedStatus] = useState<string>("");
+  const [apiKey, setApiKey] = useState("");
+  const [schedDelay, setSchedDelay] = useState("5");
+
+  const subscribeToPush = async () => {
+    setPushStatus("subscribing...");
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setPushStatus("push not supported");
+        return;
+      }
+      const registration = await navigator.serviceWorker.register('/push-sw.js');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus("permission denied");
+        return;
+      }
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'BGQemMFlflfoNw6sI3b9AzV0F2Ptregx52QxWWsSl-xLSdkLwqIzi3osbcRXdXOb9yFV-24HzYc29U6Gf31n_t0',
+      });
+      const { endpoint, keys } = subscription.toJSON() as any;
+      const res = await fetch('http://localhost:3000/api/v1/apps/cmqtcteke0003ddp8ej4q8lg8/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth, externalUserId: 'user_123' }),
+      });
+      setPushStatus(res.ok ? "subscribed!" : `error ${res.status}`);
+    } catch (e: any) {
+      setPushStatus(`error: ${e.message}`);
+    }
+  };
+
+  const sendNotification = async () => {
+    setSendStatus("sending...");
+    try {
+      const res = await fetch('http://localhost:3000/api/v1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ title: 'Hello from PushNest!', body: 'Your first push notification.', url: window.location.href }),
+      });
+      setSendStatus(res.ok ? "sent!" : `error ${res.status}`);
+    } catch (e: any) {
+      setSendStatus(`error: ${e.message}`);
+    }
+  };
+
+  const scheduleNotification = async () => {
+    setSchedStatus("scheduling...");
+    try {
+      const delayMs = parseInt(schedDelay) * 1000;
+      const sendAt = new Date(Date.now() + delayMs).toISOString();
+      const res = await fetch('http://localhost:3000/api/v1/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ title: 'Scheduled!', body: `Sent after ${schedDelay}s delay.`, url: window.location.href, sendAt }),
+      });
+      setSchedStatus(res.ok ? `scheduled for +${schedDelay}s!` : `error ${res.status}`);
+    } catch (e: any) {
+      setSchedStatus(`error: ${e.message}`);
+    }
+  };
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -412,6 +476,49 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Push Notification Test Panel */}
+              <div className="mt-4 pt-3 border-t border-neutral-50 dark:border-neutral-800/60 space-y-2">
+                <label className="block text-[10px] uppercase font-bold tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5">
+                  Push Notifications (Test)
+                </label>
+                <input
+                  type="text"
+                  placeholder="API key"
+                  value={apiKey}
+                  onChange={e => setApiKey(e.target.value)}
+                  className="w-full text-xs px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-800 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 font-mono"
+                />
+                <button
+                  onClick={subscribeToPush}
+                  className="w-full py-2 text-xs font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+                >
+                  Enable Notifications {pushStatus && <span className="font-normal opacity-70">— {pushStatus}</span>}
+                </button>
+                <button
+                  onClick={sendNotification}
+                  className="w-full py-2 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors cursor-pointer"
+                >
+                  Send Notification {sendStatus && <span className="font-normal opacity-70">— {sendStatus}</span>}
+                </button>
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={scheduleNotification}
+                    className="flex-1 py-2 text-xs font-bold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors cursor-pointer"
+                  >
+                    Schedule Notification {schedStatus && <span className="font-normal opacity-70">— {schedStatus}</span>}
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={schedDelay}
+                    onChange={e => setSchedDelay(e.target.value)}
+                    className="w-14 text-xs px-2 py-1.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-400 text-center"
+                    title="Delay in seconds"
+                  />
+                  <span className="text-[10px] text-neutral-400">s</span>
+                </div>
+              </div>
 
               {/* Share + Dark Mode row */}
               <div className="mt-4 pt-3 border-t border-neutral-50 dark:border-neutral-800/60 flex items-center gap-2">
