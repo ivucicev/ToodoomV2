@@ -80,7 +80,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
         applicationServerKey: 'BGQemMFlflfoNw6sI3b9AzV0F2Ptregx52QxWWsSl-xLSdkLwqIzi3osbcRXdXOb9yFV-24HzYc29U6Gf31n_t0',
       });
       const { endpoint, keys } = subscription.toJSON() as any;
-      const res = await fetch('http://localhost:3000/api/v1/apps/cmqtcteke0003ddp8ej4q8lg8/subscribe', {
+      const res = await fetch('https://4ef4-93-141-161-228.ngrok-free.app/api/v1/apps/cmqtcteke0003ddp8ej4q8lg8/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ endpoint, p256dh: keys.p256dh, auth: keys.auth, externalUserId: 'user_123' }),
@@ -94,7 +94,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   const sendNotification = async () => {
     setSendStatus("sending...");
     try {
-      const res = await fetch('http://localhost:3000/api/v1/send', {
+      const res = await fetch('https://4ef4-93-141-161-228.ngrok-free.app/api/v1/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({ title: 'Hello from PushNest!', body: 'Your first push notification.', url: window.location.href }),
@@ -110,7 +110,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
     try {
       const delayMs = parseInt(schedDelay) * 1000;
       const sendAt = new Date(Date.now() + delayMs).toISOString();
-      const res = await fetch('http://localhost:3000/api/v1/send', {
+      const res = await fetch('https://4ef4-93-141-161-228.ngrok-free.app/api/v1/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({ title: 'Scheduled!', body: `Sent after ${schedDelay}s delay.`, url: window.location.href, sendAt }),
