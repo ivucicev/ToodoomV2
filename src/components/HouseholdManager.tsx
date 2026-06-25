@@ -59,7 +59,7 @@ export const HouseholdManager: React.FC<HouseholdManagerProps> = ({
   const [pushStatus, setPushStatus] = useState<string>("");
   const [sendStatus, setSendStatus] = useState<string>("");
   const [schedStatus, setSchedStatus] = useState<string>("");
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState("pn_83727020a20c5584c62a7afafe8852136f39b4f5f447de183f600655671b6c8e");
   const [schedDelay, setSchedDelay] = useState("5");
 
   const subscribeToPush = async () => {
